@@ -174,6 +174,26 @@ final class BooleanEnum
 }
 ```
 
+## Exceptions
+
+Thanks to an excellent idea contributed by @andrzejkupczyk Platenum allows configuration of exceptions thrown in certain cases to fully embrace the project's domain. When enumeration class contains dedicated static property with exception class name it will be used instead of the default `PlatenumException`. These properties are listed below:
+
+- `$invalidMemberExceptionClass` for invalid member names,
+- `$invalidValueExceptionClass` for invalid values.
+
+```php
+final class AccountStatus
+{
+    use ConstantsEnumTrait;
+
+    private static string $invalidMemberExceptionClass = InvalidAccountStatusName::class;
+    private static string $invalidValueExceptionClass = InvalidAccountStatusValue::class;
+
+    private const ACTIVE = 1;
+    private const DISABLED = 2;
+}
+```
+
 ## Reasons
 
 There are already a few `enum` libraries in the PHP ecosystem. Why another one? There are several reasons to do so:

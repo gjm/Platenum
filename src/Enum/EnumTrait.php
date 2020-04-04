@@ -18,6 +18,8 @@ trait EnumTrait
     protected static $members = [];
     /** @var static[] */
     protected static $instances = [];
+    /** @var string[] */
+    protected static $exceptions = [];
 
     final private function __construct(string $member, $value)
     {
@@ -33,16 +35,8 @@ trait EnumTrait
         if($arguments) {
             throw PlatenumException::fromConstantArguments($class);
         }
-        if(isset(static::$instances[$class][$name])) {
-            return static::$instances[$class][$name];
-        }
 
-        static::resolveMembers();
-        if(false === array_key_exists($name, static::$members[$class])) {
-            throw PlatenumException::fromMissingMember($class, $name, static::$members[$class]);
-        }
-
-        return static::$instances[$class][$name] = new static($name, static::$members[$class][$name]);
+        return static::fromMember($name);
     }
 
     final public static function fromMember(string $name): self
@@ -54,7 +48,9 @@ trait EnumTrait
 
         static::resolveMembers();
         if(false === array_key_exists($name, static::$members[$class])) {
-            throw PlatenumException::fromMissingMember($class, $name, static::$members[$class]);
+            throw isset(static::$exceptions['invalidMember'])
+                ? new static::$exceptions['invalidMember']($class, $name, static::$members[$class])
+                : PlatenumException::fromInvalidMember($class, $name, static::$members[$class]);
         }
 
         return static::$instances[$class][$name] = new static($name, static::$members[$class][$name]);
@@ -69,7 +65,9 @@ trait EnumTrait
 
         static::resolveMembers();
         if(false === in_array($value, static::$members[$class], true)) {
-            throw PlatenumException::fromMissingValue($class, $value);
+            throw isset(static::$exceptions['invalidValue'])
+                ? new static::$exceptions['invalidValue']($class, $value)
+                : PlatenumException::fromInvalidValue($class, $value);
         }
 
         $name = array_search($value, static::$members[$class], true);
@@ -161,7 +159,7 @@ trait EnumTrait
 
         $class = static::class;
         if(false === static::memberExists($member)) {
-            throw PlatenumException::fromMissingMember($class, $member, static::$members[$class]);
+            throw PlatenumException::fromInvalidMember($class, $member, static::$members[$class]);
         }
 
         return static::$members[$class][$member];
@@ -173,7 +171,7 @@ trait EnumTrait
 
         $class = static::class;
         if(false === static::valueExists($value)) {
-            throw PlatenumException::fromMissingValue($class, $value);
+            throw PlatenumException::fromInvalidValue($class, $value);
         }
 
         return array_search($value, static::$members[$class], true);
@@ -212,7 +210,8 @@ trait EnumTrait
 
         // reflection instead of method_exists because of PHP 7.4 bug #78632
         // @see https://bugs.php.net/bug.php?id=78632
-        if(false === (new \ReflectionClass($class))->hasMethod('resolve')) {
+        $ref = new \ReflectionClass($class);
+        if(false === $ref->hasMethod('resolve')) {
             throw PlatenumException::fromMissingResolve($class);
         }
         $members = static::resolve();
@@ -221,6 +220,18 @@ trait EnumTrait
         }
         if(\count($members) !== \count(\array_unique($members))) {
             throw PlatenumException::fromNonUniqueMembers($class);
+        }
+
+        $exceptionMap = [
+            'invalidMemberExceptionClass' => 'invalidMember',
+            'invalidValueExceptionClass' => 'invalidValue',
+        ];
+        foreach($exceptionMap as $property => $key) {
+            if($ref->hasProperty($property)) {
+                $prop = $ref->getProperty($property);
+                $prop->setAccessible(true);
+                static::$exceptions[$key] = $prop->getValue();
+            }
         }
 
         static::$members[$class] = $members;

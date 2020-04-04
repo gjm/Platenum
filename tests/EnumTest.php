@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace Thunder\Platenum\Tests;
 
 use Thunder\Platenum\Enum\AbstractConstantsEnum;
+use Thunder\Platenum\Enum\EnumTrait;
 use Thunder\Platenum\Exception\PlatenumException;
 use Thunder\Platenum\Tests\Fake\FakeEnum;
 
@@ -429,5 +430,46 @@ final class EnumTest extends AbstractTestCase
         $this->expectException(PlatenumException::class);
         $this->expectExceptionMessage('Enum `'.$enum.'` does not allow magic `__unset` method.');
         unset($enum::FIRST()->invalidProperty);
+    }
+
+    /** @dataProvider provideCustomExceptions */
+    public function testCustomException(string $type, callable $handler): void
+    {
+        $typeMap = [
+            'invalidMember' => 'invalidMemberExceptionClass',
+            'invalidValue' => 'invalidValueExceptionClass',
+        ];
+        if(false === isset($typeMap[$type])) {
+            throw new \LogicException(sprintf('Unrecognized override type `%s`.', $type));
+        }
+
+        $members = ['FIRST' => 1];
+        foreach($members as $member => $value) {
+            $entries[] = sprintf('%s => %s', '\''.$member.'\'', is_string($value) ? '\''.$value.'\'' : $value);
+        }
+
+        $exception = new class() extends \Exception {
+            public function __construct() {}
+        };
+        $exceptionClass = get_class($exception);
+
+        $class = $this->computeUniqueClassName('EnumCustom');
+        eval('final class '.$class.' implements \JsonSerializable {
+            use '.EnumTrait::class.';
+            private static $'.$typeMap[$type].' = "'.$exceptionClass.'";
+            private static function resolve(): array { return ['.implode(', ', $entries).']; }
+        }');
+
+        $this->expectException($exceptionClass);
+        $handler($class);
+    }
+
+    public function provideCustomExceptions(): array
+    {
+        return [
+            ['invalidMember', function(string $class) { return $class::INVALID(); }],
+            ['invalidMember', function(string $class) { return $class::fromMember('INVALID'); }],
+            ['invalidValue', function(string $class) { return $class::fromValue('invalid'); }],
+        ];
     }
 }
