@@ -14,11 +14,15 @@ trait EnumTrait
     /** @var int|string */
     private $value;
 
-    /** @var array */
+    /** @var non-empty-array<string,non-empty-array<string,int|string>> */
     protected static $members = [];
-    /** @var static[] */
+    /** @var array<string,array<string,static>> */
     protected static $instances = [];
 
+    /**
+     * @param string $member
+     * @param int|string $value
+     */
     final private function __construct(string $member, $value)
     {
         $this->member = $member;
@@ -60,6 +64,10 @@ trait EnumTrait
         return static::$instances[$class][$name] = new static($name, static::$members[$class][$name]);
     }
 
+    /**
+     * @param mixed $value
+     * @return static
+     */
     final public static function fromValue($value): self
     {
         $class = static::class;
@@ -72,15 +80,20 @@ trait EnumTrait
             throw PlatenumException::fromMissingValue($class, $value);
         }
 
+        /** @var string $name */
         $name = array_search($value, static::$members[$class], true);
         if(isset(static::$instances[$class][$name])) {
             return static::$instances[$class][$name];
         }
 
-        return static::$instances[$class][$name] = new self($name, static::$members[$class][$name]);
+        return static::$instances[$class][$name] = new static($name, static::$members[$class][$name]);
     }
 
-    final public static function fromEnum($enum): self
+    /**
+     * @param static $enum
+     * @return static
+     */
+    final public static function fromEnum(self $enum): self
     {
         if(false === $enum instanceof static) {
             throw PlatenumException::fromMismatchedClass(static::class, \get_class($enum));
@@ -89,6 +102,10 @@ trait EnumTrait
         return static::fromValue($enum->value);
     }
 
+    /**
+     * @param mixed $enum
+     * @param-out static $enum
+     */
     final public function fromInstance(&$enum): void
     {
         if(false === $enum instanceof static) {
@@ -100,7 +117,7 @@ trait EnumTrait
 
     /* --- COMPARE --- */
 
-    final public function equals($other): bool
+    final public function equals(self $other): bool
     {
         return $other instanceof $this && $this->value === $other->value;
     }
@@ -112,6 +129,9 @@ trait EnumTrait
         return $this->member;
     }
 
+    /**
+     * @return int|string
+     */
     final public function getValue()
     {
         return $this->value;
@@ -136,6 +156,10 @@ trait EnumTrait
         return array_key_exists($member, static::$members[static::class]);
     }
 
+    /**
+     * @param int|string $value
+     * @return bool
+     */
     final public static function valueExists($value): bool
     {
         static::resolveMembers();
@@ -148,6 +172,10 @@ trait EnumTrait
         return $members === $this->member;
     }
 
+    /**
+     * @param int|string $value
+     * @return bool
+     */
     final public function hasValue($value): bool
     {
         return $value === $this->value;
@@ -155,6 +183,10 @@ trait EnumTrait
 
     /* --- INFO --- */
 
+    /**
+     * @param string $member
+     * @return int|string
+     */
     final public static function memberToValue(string $member)
     {
         static::resolveMembers();
@@ -167,6 +199,10 @@ trait EnumTrait
         return static::$members[$class][$member];
     }
 
+    /**
+     * @param int|string $value
+     * @return string
+     */
     final public static function valueToMember($value)
     {
         static::resolveMembers();
@@ -176,7 +212,7 @@ trait EnumTrait
             throw PlatenumException::fromMissingValue($class, $value);
         }
 
-        return array_search($value, static::$members[$class], true);
+        return (string)array_search($value, static::$members[$class], true);
     }
 
     final public static function getMembers(): array
@@ -215,6 +251,7 @@ trait EnumTrait
         if(false === (new \ReflectionClass($class))->hasMethod('resolve')) {
             throw PlatenumException::fromMissingResolve($class);
         }
+        /** @var array<string,int|string> $members */
         $members = static::resolve();
         if(empty($members)) {
             throw PlatenumException::fromEmptyMembers($class);
@@ -233,7 +270,7 @@ trait EnumTrait
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
 
-    final public function __call($name, $arguments)
+    final public function __call()
     {
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
@@ -243,22 +280,22 @@ trait EnumTrait
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
 
-    final public function __isset($name)
+    final public function __isset()
     {
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
 
-    final public function __unset($name)
+    final public function __unset()
     {
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
 
-    final public function __set($name, $value)
+    final public function __set()
     {
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }
 
-    final public function __get($name)
+    final public function __get()
     {
         throw PlatenumException::fromMagicMethod(static::class, __FUNCTION__);
     }

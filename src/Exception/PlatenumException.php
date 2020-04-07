@@ -7,6 +7,11 @@ namespace Thunder\Platenum\Exception;
  */
 final class PlatenumException extends \LogicException
 {
+    /**
+     * @param string $fqcn
+     * @param mixed $value
+     * @return static
+     */
     public static function fromIllegalValue(string $fqcn, $value): self
     {
         return new self(sprintf('Enum `%s` value must be a scalar, `%s` given.', $fqcn, gettype($value)));
@@ -22,9 +27,14 @@ final class PlatenumException extends \LogicException
         return new self(sprintf('Enum `%s` does not contain member `%s` among `%s`.', $fqcn, $member, implode(',', array_keys($members))));
     }
 
+    /**
+     * @param string $fqcn
+     * @param mixed $value
+     * @return static
+     */
     public static function fromMissingValue(string $fqcn, $value): self
     {
-        return new self(sprintf('Enum `%s` does not contain any member with value `%s`.', $fqcn, $value));
+        return new self(sprintf('Enum `%s` does not contain any member with value `%s`.', $fqcn, json_encode($value)));
     }
 
     public static function fromConstantArguments(string $fqcn): self
